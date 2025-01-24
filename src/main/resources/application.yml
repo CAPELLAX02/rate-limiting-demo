@@ -1,3 +1,6 @@
 spring:
   application:
     name: rate-limiting-demo
+
+server:
+  port: 8888

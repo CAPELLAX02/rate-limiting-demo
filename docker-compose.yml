@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    networks:
+      - app-network
+
+  ddos:
+    image: python:3.9-slim
+    container_name: ddos_container
+    working_dir: /app/
+    volumes:
+      - .:/app
+    command: sh -c "pip install -r requirements.txt && python3 ddos.py"
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
