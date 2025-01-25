@@ -6,6 +6,8 @@ import io.github.bucket4j.Bucket4j;
 import io.github.bucket4j.Refill;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -22,6 +24,8 @@ public class RateLimitingFilter implements Filter {
             throws IOException, ServletException {
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
         String clientIp = httpRequest.getRemoteAddr();
 
         Bucket bucket = cache.computeIfAbsent(clientIp, this::createNewBucket);
@@ -29,15 +33,17 @@ public class RateLimitingFilter implements Filter {
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
         } else {
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Too many requests. Please try again later.\"}");
-            response.getWriter().flush();
+            httpResponse.setContentType("application/json");
+            httpResponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            httpResponse.getWriter().write("{\"error\":\"Too many requests. Please try again later.\"}");
+            httpResponse.getWriter().flush();
         }
     }
 
     private Bucket createNewBucket(String clientIp) {
         return Bucket4j.builder()
-                .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofSeconds(1))))
+                // rate limit is currently "15 request per 1 second", you change it and test it out.
+                .addLimit(Bandwidth.classic(15, Refill.intervally(10, Duration.ofSeconds(1))))
                 .build();
     }
 
